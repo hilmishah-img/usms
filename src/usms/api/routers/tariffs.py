@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from usms.config.constants import ELECTRICITY_TARIFF, WATER_TARIFF
+from usms.config.constants import ELECTRIC_TARIFF, WATER_TARIFF
 
 router = APIRouter(prefix="/tariffs", tags=["Tariffs"])
 
@@ -65,7 +65,7 @@ async def get_electricity_tariff() -> TariffResponse:
             upper_bound="inf" if tier.upper_bound == float("inf") else tier.upper_bound,
             rate=tier.rate,
         )
-        for tier in ELECTRICITY_TARIFF.tiers
+        for tier in ELECTRIC_TARIFF.tiers
     ]
 
     return TariffResponse(type="Electricity", unit="kWh", tiers=tiers)

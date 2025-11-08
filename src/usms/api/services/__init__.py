@@ -1,7 +1,6 @@
 """Background services for API functionality."""
 
-__all__ = ["CacheService", "SchedulerService", "WebhookService"]
+__all__ = ["HybridCache", "get_cache", "SchedulerService"]
 
-from usms.api.services.cache import CacheService
+from usms.api.services.cache import HybridCache, get_cache
 from usms.api.services.scheduler import SchedulerService
-from usms.api.services.webhooks import WebhookService

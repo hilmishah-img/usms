@@ -5,6 +5,7 @@ import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
+from cryptography.fernet import Fernet
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -21,6 +22,69 @@ security = HTTPBearer()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _get_encryption_key() -> bytes:
+    """Get or generate encryption key from JWT secret.
+
+    Returns
+    -------
+    bytes
+        32-byte Fernet encryption key derived from JWT secret
+    """
+    settings = get_settings()
+    # Derive a 32-byte key from JWT_SECRET for Fernet encryption
+    # Use SHA256 to ensure we always get exactly 32 bytes
+    key = hashlib.sha256(settings.JWT_SECRET.encode()).digest()
+    return Fernet(Fernet.generate_key() if len(key) != 32 else key)
+
+
+def _encrypt_password(password: str) -> str:
+    """Encrypt password using Fernet (reversible encryption).
+
+    Parameters
+    ----------
+    password : str
+        Plain text password
+
+    Returns
+    -------
+    str
+        Base64-encoded encrypted password
+    """
+    settings = get_settings()
+    # Create Fernet cipher using JWT secret as base
+    key = hashlib.sha256(settings.JWT_SECRET.encode()).digest()
+    key_base64 = Fernet.generate_key()[:32]  # Get proper Fernet key format
+    # Use first 32 bytes of SHA256 hash as Fernet key
+    import base64
+    fernet_key = base64.urlsafe_b64encode(key)
+    cipher = Fernet(fernet_key)
+    encrypted = cipher.encrypt(password.encode())
+    return encrypted.decode()
+
+
+def _decrypt_password(encrypted_password: str) -> str:
+    """Decrypt password using Fernet.
+
+    Parameters
+    ----------
+    encrypted_password : str
+        Base64-encoded encrypted password
+
+    Returns
+    -------
+    str
+        Decrypted plain text password
+    """
+    settings = get_settings()
+    # Create Fernet cipher using same JWT secret
+    key = hashlib.sha256(settings.JWT_SECRET.encode()).digest()
+    import base64
+    fernet_key = base64.urlsafe_b64encode(key)
+    cipher = Fernet(fernet_key)
+    decrypted = cipher.decrypt(encrypted_password.encode())
+    return decrypted.decode()
+
+
 def create_access_token(username: str, password: str) -> tuple[str, int]:
     """Create JWT access token with encrypted credentials.
 
@@ -29,7 +93,7 @@ def create_access_token(username: str, password: str) -> tuple[str, int]:
     username : str
         USMS username (IC number)
     password : str
-        USMS password (will be encrypted)
+        USMS password (will be encrypted with Fernet)
 
     Returns
     -------
@@ -40,7 +104,7 @@ def create_access_token(username: str, password: str) -> tuple[str, int]:
     -----
     The token contains:
     - username (plain)
-    - password (hashed with bcrypt)
+    - password (encrypted with Fernet - reversible)
     - user_id (hash of username for identification)
     - exp (expiration timestamp)
     """
@@ -49,8 +113,8 @@ def create_access_token(username: str, password: str) -> tuple[str, int]:
     # Create user ID hash for identification
     user_id = hashlib.sha256(username.encode()).hexdigest()[:16]
 
-    # Encrypt password
-    encrypted_password = pwd_context.hash(password)
+    # Encrypt password (reversible encryption)
+    encrypted_password = _encrypt_password(password)
 
     # Calculate expiration
     expires_delta = timedelta(seconds=settings.JWT_EXPIRATION)
@@ -155,7 +219,7 @@ async def get_current_account(
     Parameters
     ----------
     token_data : TokenData
-        Verified token data with credentials
+        Verified token data with encrypted credentials
 
     Returns
     -------
@@ -168,14 +232,13 @@ async def get_current_account(
         If login fails or credentials are invalid (401)
     """
     try:
-        # Note: Password in token is encrypted, but we need the original
-        # For production, consider using reversible encryption (e.g., Fernet)
-        # For now, we'll need to pass the encrypted password and handle it
+        # Decrypt password from token
+        plain_password = _decrypt_password(token_data.password)
 
-        # Create async account
+        # Create async account with decrypted credentials
         account = await initialize_usms_account(
             username=token_data.username,
-            password=token_data.password,  # This is hashed - need to fix
+            password=plain_password,
             async_mode=True,
         )
 
