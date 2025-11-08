@@ -1,0 +1,83 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# GitHub
+.github
+
+# Development
+.devcontainer
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+reports/
+
+# Linting/Formatting
+.ruff_cache
+.mypy_cache
+.dmypy.json
+dmypy.json
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+
+# Nix
+.envrc
+flake.nix
+flake.lock
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# Tests
+tests/
+
+# CI/CD
+.commitlintrc.yaml
+
+# Misc
+*.log
+.DS_Store
+*.db
+*.sqlite
+*.csv

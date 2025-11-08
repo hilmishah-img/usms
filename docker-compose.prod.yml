@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # Example 1: List all meters
+  usms-list:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      - USMS_USERNAME=${USMS_USERNAME}
+      - USMS_PASSWORD=${USMS_PASSWORD}
+    command: ["--list"]
+    profiles:
+      - list
+
+  # Example 2: Get meter unit balance
+  usms-unit:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      - USMS_USERNAME=${USMS_USERNAME}
+      - USMS_PASSWORD=${USMS_PASSWORD}
+    volumes:
+      - ./data:/data
+    command: ["-m", "${METER_ID}", "--unit"]
+    profiles:
+      - unit
+
+  # Example 3: Get meter credit balance
+  usms-credit:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      - USMS_USERNAME=${USMS_USERNAME}
+      - USMS_PASSWORD=${USMS_PASSWORD}
+    volumes:
+      - ./data:/data
+    command: ["-m", "${METER_ID}", "--credit"]
+    profiles:
+      - credit
+
+  # Example 4: Sync mode (for debugging or specific requirements)
+  usms-sync:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      - USMS_USERNAME=${USMS_USERNAME}
+      - USMS_PASSWORD=${USMS_PASSWORD}
+    volumes:
+      - ./data:/data
+    command: ["--sync", "-m", "${METER_ID}", "--unit"]
+    profiles:
+      - sync
+
+  # Example 5: With debug logging
+  usms-debug:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      - USMS_USERNAME=${USMS_USERNAME}
+      - USMS_PASSWORD=${USMS_PASSWORD}
+    volumes:
+      - ./data:/data
+    command: ["--log-level", "debug", "-m", "${METER_ID}", "--unit"]
+    profiles:
+      - debug
+
+  # API Server: REST API with all USMS functionality
+  usms-api:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      # JWT Configuration (REQUIRED - change in production!)
+      - USMS_JWT_SECRET=${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION}
+
+      # Rate Limiting
+      - USMS_API_RATE_LIMIT=${RATE_LIMIT:-100}
+      - USMS_API_RATE_WINDOW=${RATE_WINDOW:-3600}
+
+      # Cache Configuration
+      - USMS_CACHE_MEMORY_SIZE=${CACHE_MEMORY_SIZE:-1000}
+
+      # Background Jobs
+      - USMS_ENABLE_SCHEDULER=${ENABLE_SCHEDULER:-true}
+
+      # Webhook Configuration
+      - USMS_WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-10}
+      - USMS_WEBHOOK_MAX_FAILURES=${WEBHOOK_MAX_FAILURES:-3}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - usms-api-data:/data
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--workers", "${API_WORKERS:-4}"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import usms"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    profiles:
+      - api
+
+  # API Server (Development Mode with auto-reload)
+  usms-api-dev:
+    image: ghcr.io/azsaurr/usms:latest
+    environment:
+      - USMS_JWT_SECRET=${JWT_SECRET:-dev_secret_key}
+      - USMS_API_RATE_LIMIT=1000
+      - USMS_ENABLE_SCHEDULER=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ./src:/app/src  # Mount source for development
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    profiles:
+      - api-dev
+
+volumes:
+  usms-api-data:
+    driver: local
+
+# Usage examples:
+# 1. Create a .env file with your credentials:
+#    USMS_USERNAME=your_ic_number
+#    USMS_PASSWORD=your_password
+#    METER_ID=your_meter_id
+#
+# 2. Run specific profiles:
+#    docker-compose -f docker-compose.prod.yml --profile list up
+#    docker-compose -f docker-compose.prod.yml --profile unit up
+#    docker-compose -f docker-compose.prod.yml --profile credit up
+#
+# 3. Data persistence:
+#    SQLite databases and CSV files will be stored in ./data directory
+#
+# 4. Build from local Dockerfile (optional):
+#    Uncomment the 'build' section below and comment out 'image' line
+#
+# services:
+#   usms-custom:
+#     build:
+#       context: .
+#       target: runtime
+#     environment:
+#       - USMS_USERNAME=${USMS_USERNAME}
+#       - USMS_PASSWORD=${USMS_PASSWORD}
+#     volumes:
+#       - ./data:/data
+#     command: ["-m", "${METER_ID}", "--unit"]

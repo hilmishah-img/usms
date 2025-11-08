@@ -25,6 +25,21 @@ releasenotes = "https://github.com/azsaurr/usms/releases"
 documentation = "https://github.com/azsaurr/usms"
 issues = "https://github.com/azsaurr/usms/issues"
 
+[project.optional-dependencies]  # https://packaging.python.org/en/latest/specifications/dependency-specifiers/#extras
+api = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.12",
+    "cachetools>=5.5.0",
+    "diskcache>=5.6.3",
+    "apscheduler>=3.10.4",
+    "aiosqlite>=0.20.0",
+    "httpx>=0.28.1",
+]
+
 [dependency-groups]  # https://docs.astral.sh/uv/concepts/projects/dependencies/#development-dependencies
 dev = [
   "commitizen (>=4.3.0)",

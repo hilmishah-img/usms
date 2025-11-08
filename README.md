@@ -98,6 +98,281 @@ print(daily_consumptions)
 print(meter.calculate_total_cost(daily_consumptions))
 ```
 
+## Docker
+
+USMS is available as a Docker container for easy deployment without Python installation.
+
+### Pull from GitHub Container Registry
+
+```sh
+docker pull ghcr.io/azsaurr/usms:latest
+```
+
+### Usage Examples
+
+#### List all meters
+
+```sh
+docker run --rm \
+  -e USMS_USERNAME="your_ic_number" \
+  -e USMS_PASSWORD="your_password" \
+  ghcr.io/azsaurr/usms:latest --list
+```
+
+#### Get meter unit balance
+
+```sh
+docker run --rm \
+  -e USMS_USERNAME="your_ic_number" \
+  -e USMS_PASSWORD="your_password" \
+  -v ./data:/data \
+  ghcr.io/azsaurr/usms:latest -m METER_ID --unit
+```
+
+#### Get meter credit balance
+
+```sh
+docker run --rm \
+  -e USMS_USERNAME="your_ic_number" \
+  -e USMS_PASSWORD="your_password" \
+  -v ./data:/data \
+  ghcr.io/azsaurr/usms:latest -m METER_ID --credit
+```
+
+#### Using docker-compose
+
+Create a `.env` file with your credentials:
+
+```env
+USMS_USERNAME=your_ic_number
+USMS_PASSWORD=your_password
+METER_ID=your_meter_id
+```
+
+Then use the provided `docker-compose.prod.yml`:
+
+```sh
+# List all meters
+docker-compose -f docker-compose.prod.yml --profile list up
+
+# Get meter unit balance
+docker-compose -f docker-compose.prod.yml --profile unit up
+
+# Get meter credit balance
+docker-compose -f docker-compose.prod.yml --profile credit up
+```
+
+#### Data Persistence
+
+Mount a volume to `/data` to persist SQLite databases and CSV files:
+
+```sh
+docker run --rm \
+  -e USMS_USERNAME="your_ic_number" \
+  -e USMS_PASSWORD="your_password" \
+  -v $(pwd)/data:/data \
+  ghcr.io/azsaurr/usms:latest -m METER_ID --unit
+```
+
+#### Available Tags
+
+- `latest` - Latest stable release
+- `vX.Y.Z` - Specific version (e.g., `v0.9.2`)
+- `X.Y` - Major.minor version (e.g., `0.9`)
+- `X` - Major version (e.g., `0`)
+
+### Building Locally
+
+To build the production image locally:
+
+```sh
+docker build --target runtime -t usms:local .
+```
+
+To build for multiple platforms:
+
+```sh
+docker buildx build --platform linux/amd64,linux/arm64 --target runtime -t usms:local .
+```
+
+## REST API
+
+USMS includes a production-ready REST API that exposes all library functionality via HTTP endpoints. The API features JWT authentication, rate limiting, hybrid caching, and background job scheduling.
+
+### Installation
+
+Install with API dependencies:
+
+```sh
+pip install usms[api]
+```
+
+### Quick Start
+
+Start the API server:
+
+```sh
+# Using the CLI
+python -m usms serve
+
+# With custom host and port
+python -m usms serve --host 0.0.0.0 --port 8000
+
+# Development mode with auto-reload
+python -m usms serve --reload
+```
+
+The API will be available at `http://127.0.0.1:8000` with interactive documentation at:
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
+- OpenAPI spec: `http://127.0.0.1:8000/openapi.json`
+
+### Features
+
+- **JWT Authentication**: Secure token-based authentication with encrypted credentials
+- **Rate Limiting**: Configurable rate limits per user (default: 100 requests/hour)
+- **Hybrid Caching**: Two-tier cache (in-memory + SQLite) for optimal performance
+- **Background Jobs**: Automatic cache cleanup and maintenance
+- **Error Handling**: Consistent error responses across all endpoints
+- **CORS Support**: Configurable cross-origin resource sharing
+- **Health Checks**: Built-in health check endpoint for monitoring
+- **Auto-generated Docs**: Interactive API documentation with try-it-out functionality
+
+### API Endpoints
+
+#### Authentication
+- `POST /auth/login` - Login and get JWT token
+- `GET /auth/verify` - Verify token validity
+- `POST /auth/refresh` - Refresh account data
+- `POST /auth/logout` - Logout (invalidate token)
+
+#### Account
+- `GET /account` - Get account information
+- `POST /account/refresh` - Force refresh account data
+
+#### Meters
+- `GET /meters/{meter_id}` - Get meter information
+- `GET /meters/{meter_id}/unit` - Get meter unit balance
+- `GET /meters/{meter_id}/credit` - Get meter credit balance
+- `GET /meters/{meter_id}/consumption/hourly` - Get hourly consumption
+- `GET /meters/{meter_id}/consumption/daily` - Get daily consumption
+- `POST /meters/{meter_id}/cost/calculate` - Calculate cost for consumption
+
+#### Tariffs
+- `GET /tariffs/electricity` - Get electricity tariff information
+- `GET /tariffs/water` - Get water tariff information
+
+### Docker Usage (API Server)
+
+#### Using docker-compose (Recommended)
+
+Create a `.env` file:
+
+```env
+# JWT Configuration (REQUIRED - change in production!)
+JWT_SECRET=your_very_secure_secret_key_change_me
+
+# API Configuration
+API_PORT=8000
+API_WORKERS=4
+
+# Rate Limiting
+RATE_LIMIT=100
+RATE_WINDOW=3600
+
+# Cache Configuration
+CACHE_MEMORY_SIZE=1000
+
+# Background Jobs
+ENABLE_SCHEDULER=true
+```
+
+Start the API server:
+
+```sh
+# Production mode (4 workers)
+docker-compose -f docker-compose.prod.yml --profile api up -d
+
+# Development mode (with auto-reload)
+docker-compose -f docker-compose.prod.yml --profile api-dev up
+```
+
+#### Using docker run
+
+```sh
+docker run -d \
+  --name usms-api \
+  -p 8000:8000 \
+  -e USMS_JWT_SECRET="your_secret_key" \
+  -v usms-data:/data \
+  ghcr.io/azsaurr/usms:latest \
+  serve --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USMS_JWT_SECRET` | `CHANGE_ME_IN_PRODUCTION` | Secret key for JWT token signing (REQUIRED in production) |
+| `USMS_JWT_EXPIRATION` | `86400` | JWT token expiration time in seconds (24 hours) |
+| `USMS_API_HOST` | `127.0.0.1` | API server host |
+| `USMS_API_PORT` | `8000` | API server port |
+| `USMS_API_WORKERS` | `4` | Number of worker processes (production) |
+| `USMS_API_RATE_LIMIT` | `100` | Maximum requests per user per window |
+| `USMS_API_RATE_WINDOW` | `3600` | Rate limit window in seconds (1 hour) |
+| `USMS_CACHE_MEMORY_SIZE` | `1000` | Maximum number of items in memory cache |
+| `USMS_ENABLE_SCHEDULER` | `true` | Enable background job scheduler |
+
+### Example API Usage
+
+#### Login and get token
+
+```sh
+curl -X POST "http://localhost:8000/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "01001234", "password": "your_password"}'
+```
+
+Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 86400
+}
+```
+
+#### Get account information
+
+```sh
+curl -X GET "http://localhost:8000/account" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### Get meter unit balance
+
+```sh
+curl -X GET "http://localhost:8000/meters/METER_ID/unit" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### Get hourly consumption
+
+```sh
+curl -X GET "http://localhost:8000/meters/METER_ID/consumption/hourly?days=7" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Production Deployment Checklist
+
+- [ ] Change `USMS_JWT_SECRET` to a strong, unique secret key
+- [ ] Configure `USMS_API_RATE_LIMIT` based on your needs
+- [ ] Set up HTTPS/TLS (use reverse proxy like nginx or Traefik)
+- [ ] Configure CORS allowed origins (update `api/main.py`)
+- [ ] Set up monitoring and logging
+- [ ] Configure backup for `/data` volume (contains SQLite cache)
+- [ ] Review and adjust worker count based on server resources
+
 ## To-Do
 
 * [ ] Add more test coverage

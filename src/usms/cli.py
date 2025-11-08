@@ -27,15 +27,43 @@ except PackageNotFoundError:
 def run_cli() -> None:  # noqa: PLR0912
     """Run the command-line interface for USMS."""
     parser = argparse.ArgumentParser(description="USMS CLI")
+    parser.add_argument("--version", action="version", version=f"USMS CLI v{usms_version}")
 
+    # Create subparsers for different commands
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Serve command (API server)
+    serve_parser = subparsers.add_parser("serve", help="Start API server")
+    serve_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1)",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to (default: 8000)",
+    )
+    serve_parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload for development",
+    )
+    serve_parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of worker processes (default: 1)",
+    )
+
+    # Default command arguments (backwards compatibility - no subcommand needed)
     parser.add_argument(
         "-log",
         "--log-level",
         default="warning",
         help="Set log level (e.g., debug, info, warning, error)",
     )
-    parser.add_argument("--version", action="version", version=f"USMS CLI v{usms_version}")
-
     parser.add_argument(
         "-u",
         "--username",
@@ -64,6 +92,18 @@ def run_cli() -> None:  # noqa: PLR0912
     data_group.add_argument("--credit", action="store_true", help="Show remaining credit balance")
 
     args = parser.parse_args()
+
+    # Handle serve command
+    if args.command == "serve":
+        from usms.api.server import run_server
+
+        run_server(
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+            workers=args.workers,
+        )
+        return
 
     # check passed arguments
     if not getattr(logging, args.log_level.upper(), None):
