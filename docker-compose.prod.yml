@@ -60,30 +60,15 @@ services:
       - debug
 
   # API Server: REST API with all USMS functionality
-  usms-api:
-    image: ghcr.io/azsaurr/usms:latest
-    environment:
-      # JWT Configuration (REQUIRED - change in production!)
-      - USMS_JWT_SECRET=${JWT_SECRET:-CHANGE_ME_IN_PRODUCTION}
-
-      # Rate Limiting
-      - USMS_API_RATE_LIMIT=${RATE_LIMIT:-100}
-      - USMS_API_RATE_WINDOW=${RATE_WINDOW:-3600}
-
-      # Cache Configuration
-      - USMS_CACHE_MEMORY_SIZE=${CACHE_MEMORY_SIZE:-1000}
-
-      # Background Jobs
-      - USMS_ENABLE_SCHEDULER=${ENABLE_SCHEDULER:-true}
-
-      # Webhook Configuration
-      - USMS_WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-10}
-      - USMS_WEBHOOK_MAX_FAILURES=${WEBHOOK_MAX_FAILURES:-3}
+  usms-api-server:
+    image: usms:local
+    env_file:
+      - .env
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-8010}:8000"
     volumes:
       - usms-api-data:/data
-    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--workers", "${API_WORKERS:-4}"]
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import usms"]
@@ -120,16 +105,27 @@ volumes:
 #    USMS_PASSWORD=your_password
 #    METER_ID=your_meter_id
 #
-# 2. Run specific profiles:
-#    docker-compose -f docker-compose.prod.yml --profile list up
-#    docker-compose -f docker-compose.prod.yml --profile unit up
-#    docker-compose -f docker-compose.prod.yml --profile credit up
+# 2. Run the REST API server:
+#    docker compose -f docker-compose.prod.yml --profile api up -d
 #
-# 3. Data persistence:
-#    SQLite databases and CSV files will be stored in ./data directory
+#    API will be available at:
+#    - Health: http://localhost:8010/health
+#    - Docs: http://localhost:8010/docs
+#    - OpenAPI: http://localhost:8010/openapi.json
 #
-# 4. Build from local Dockerfile (optional):
-#    Uncomment the 'build' section below and comment out 'image' line
+# 3. Run CLI examples:
+#    docker compose -f docker-compose.prod.yml --profile list up
+#    docker compose -f docker-compose.prod.yml --profile unit up
+#    docker compose -f docker-compose.prod.yml --profile credit up
+#
+# 4. View logs:
+#    docker compose -f docker-compose.prod.yml logs -f usms-api-server
+#
+# 5. Stop the API:
+#    docker compose -f docker-compose.prod.yml --profile api down
+#
+# 6. Data persistence:
+#    Volume 'usms-api-data' stores cache, databases, and CSV files
 #
 # services:
 #   usms-custom:

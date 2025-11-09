@@ -55,8 +55,8 @@ class HybridCache:
 
         # L2: Disk cache
         settings = get_settings()
-        cache_path = disk_path or settings.CACHE_TTL_ACCOUNT  # Use config path
-        cache_dir = Path(cache_path).parent / "cache"
+        cache_path = disk_path or settings.CACHE_PATH  # Use config path
+        cache_dir = Path(cache_path) / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         self.l2 = DiskCache(str(cache_dir), size_limit=disk_size_limit)
@@ -328,7 +328,7 @@ def get_cache() -> HybridCache:
     if _cache_instance is None:
         settings = get_settings()
         _cache_instance = HybridCache(
-            memory_size=1000,  # TODO: Make configurable
+            memory_size=settings.CACHE_MEMORY_SIZE,
             disk_path=None,  # Uses default from config
             disk_size_limit=1_073_741_824,  # 1 GB
         )

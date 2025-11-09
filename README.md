@@ -373,6 +373,17 @@ curl -X GET "http://localhost:8000/meters/METER_ID/consumption/hourly?days=7" \
 - [ ] Configure backup for `/data` volume (contains SQLite cache)
 - [ ] Review and adjust worker count based on server resources
 
+> **📖 For comprehensive production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+>
+> The deployment guide includes:
+> - Step-by-step setup instructions
+> - Environment configuration details
+> - Reverse proxy setup (nginx, Traefik, Caddy)
+> - Monitoring and maintenance procedures
+> - Backup and recovery strategies
+> - Troubleshooting guide
+> - Security best practices
+
 ## To-Do
 
 * [ ] Add more test coverage

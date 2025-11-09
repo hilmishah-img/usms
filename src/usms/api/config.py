@@ -27,6 +27,10 @@ class Settings:
     RATE_LIMIT: int = int(os.getenv("USMS_API_RATE_LIMIT", "100"))
     RATE_WINDOW: int = int(os.getenv("USMS_API_RATE_WINDOW", "3600"))  # 1 hour
 
+    # Cache Configuration
+    CACHE_PATH: str = os.getenv("USMS_CACHE_PATH", "/data")  # Base path for cache storage
+    CACHE_MEMORY_SIZE: int = int(os.getenv("USMS_CACHE_MEMORY_SIZE", "1000"))  # L1 cache size
+
     # Cache TTL (in seconds)
     CACHE_TTL_ACCOUNT: int = int(os.getenv("USMS_CACHE_TTL_ACCOUNT", "900"))  # 15 min
     CACHE_TTL_METER_CURRENT: int = int(os.getenv("USMS_CACHE_TTL_METER_CURRENT", "300"))  # 5 min

@@ -43,9 +43,11 @@ ARG INSTALL_API=true
 # Set working directory
 WORKDIR /build
 
-# Copy dependency files
+# Copy dependency files and source code
 COPY pyproject.toml ./
 COPY README.md ./
+COPY LICENSE ./
+COPY src ./src
 
 # Create virtual environment and install production dependencies
 ENV VIRTUAL_ENV=/opt/venv
@@ -92,6 +94,9 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+
+# Create and set permissions for data directory
+RUN mkdir -p /data && chown -R usms:usms /data
 
 # Set working directory for data persistence
 WORKDIR /data
